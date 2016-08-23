@@ -6,7 +6,7 @@ const crypto = require('crypto'),
     POGOProtos = require('node-pogo-protos'),
     pogoSignature = require('node-pogo-signature'),
     Promise = require('bluebird'),
-    request = require('request'),
+    fetch = require('node-fetch'),
     retry = require('bluebird-retry'),
     Utils = require('./pogobuf.utils.js');
 
@@ -756,14 +756,14 @@ function Client() {
      * INTERNAL STUFF
      */
 
-    this.request = request.defaults({
-        headers: {
-            'User-Agent': 'Niantic App',
-            'Accept': '*/*',
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        encoding: null
-    });
+    // this.request = request.defaults({
+    //     headers: {
+    //         'User-Agent': 'Niantic App',
+    //         'Accept': '*/*',
+    //         'Content-Type': 'application/x-www-form-urlencoded'
+    //     },
+    //     encoding: null
+    // });
 
     this.maxTries = 5;
     this.mapObjectsThrottlingEnabled = true;
@@ -946,29 +946,28 @@ function Client() {
     this.tryCallRPC = function(requests, envelope) {
         return self.buildSignedEnvelope(requests, envelope)
             .then(signedEnvelope => new Promise((resolve, reject) => {
-                self.request({
-                    method: 'POST',
-                    url: self.endpoint,
-                    proxy: self.proxy,
-                    body: signedEnvelope.toBuffer()
-                }, (err, response, body) => {
-                    if (err) {
-                        reject(Error(err));
-                        return;
-                    }
-
-                    if (response.statusCode !== 200) {
-                        if (response.statusCode >= 400 && response.statusCode < 500) {
+                fetch(self.endpoint, {
+                  method: 'POST',
+                  headers: {
+                      'User-Agent': 'Niantic App',
+                      'Accept': '*/*',
+                      'Content-Type': 'application/x-www-form-urlencoded'
+                  },
+                  proxy: self.proxy,
+                  body: signedEnvelope.toBuffer()
+                }).then(response => {
+                    if (!response.ok) {
+                        if (response.status >= 400 && response.status < 500) {
                             /* These are permanent errors so throw StopError */
                             reject(new retry.StopError(
-                                `Status code ${response.statusCode} received from HTTPS request`));
+                                `Status code ${response.status} received from HTTPS request`));
                         } else {
                             /* Anything else might be recoverable so throw regular Error */
-                            reject(Error(`Status code ${response.statusCode} received from HTTPS request`));
+                            reject(Error(`Status code ${response.status} received from HTTPS request`));
                         }
-                        return;
                     }
-
+                    return response.buffer()
+                }).then( body => {
                     var responseEnvelope;
                     try {
                         responseEnvelope = POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(body);
@@ -1070,7 +1069,9 @@ function Client() {
                     if (!responses.length) resolve(true);
                     else if (responses.length === 1) resolve(responses[0]);
                     else resolve(responses);
-                });
+
+                })
+                .catch(err=>reject(Error(err)))
             }));
     };
 

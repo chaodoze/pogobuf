@@ -29,11 +29,10 @@
   "dependencies": {
     "bluebird": "^3.4.1",
     "bluebird-retry": "^0.8.0",
-    "gpsoauthnode": "0.0.5",
     "long": "^3.2.0",
-    "node-pogo-protos": "^1.4.0",
-    "node-pogo-signature": "^2.0.0",
-    "request": "^2.74.0",
+    "node-fetch": "^1.6.0",
+    "node-pogo-protos": "https://github.com/chaodoze/node-pogo-protos.git",
+    "node-pogo-signature": "https://github.com/chaodoze/node-pogo-signature.git",
     "s2-geometry": "^1.2.7"
   },
   "devDependencies": {
